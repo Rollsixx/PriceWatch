@@ -4,7 +4,7 @@
 import * as SQLite from 'expo-sqlite';
 
 // Open (or create) the database file on device
-const db = SQLite.openDatabaseSync('wishlist.db');
+const db = SQLite.openDatabaseSync('pricewatch.db');
 
 // Create all tables on app startup
 export function initDatabase() {

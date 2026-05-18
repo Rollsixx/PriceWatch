@@ -1,4 +1,3 @@
-// app/(stack)/product/[id].tsx
 import PriceChart from '../../../components/chart/PriceChart';
 import { useEffect, useState } from 'react';
 import {
@@ -17,6 +16,8 @@ import { useWishlist } from '../../../hooks/useWishlist';
 import { usePriceHistory } from '../../../hooks/usePriceHistory';
 import { simulatePriceChange } from '../../../utils/priceSimulator';
 import { useNotificationStore } from '../../../store/useNotificationStore';
+import StickyBottomBar from '../../../components/ui/StickyBottomBar';
+import CollapsibleSection from '../../../components/ui/CollapsibleSection';
 import LoadingState from '../../../components/ui/LoadingState';
 import ErrorState from '../../../components/ui/ErrorState';
 import { COLORS } from '../../../constants';
@@ -53,7 +54,6 @@ export default function ProductDetailsScreen() {
     return () => setSelectedProduct(null);
   }, [id]);
 
-  // Once product loads, seed and load price history
   useEffect(() => {
     if (selectedProduct) {
       initHistory(selectedProduct.currentPrice, selectedProduct.originalPrice);
@@ -83,21 +83,19 @@ export default function ProductDetailsScreen() {
       selectedProduct.currentPrice
     );
 
-    // If algorithm detected a price drop → add to notification store
     if (result.alert) {
       addAlert(result.alert);
     }
 
-    loadHistory(); // Refresh history display
+    loadHistory();
 
-    // Show result to user
     const dropDetected = result.alert !== null;
     Alert.alert(
-      dropDetected ? '🚨 Price Drop Detected!' : '📊 Price Updated',
+      dropDetected ? 'Price Drop Detected!' : 'Price Updated',
       `Old: $${result.oldPrice.toFixed(2)}\n` +
         `New: $${result.newPrice.toFixed(2)}\n` +
         `Change: ${result.changePercent > 0 ? '+' : ''}${result.changePercent}%` +
-        (dropDetected ? `\n\n✅ Alert added to notifications!` : ''),
+        (dropDetected ? '\n\nAlert added to notifications!' : ''),
       [{ text: 'OK' }]
     );
   }
@@ -111,158 +109,179 @@ export default function ProductDetailsScreen() {
     ((product.originalPrice - product.currentPrice) / product.originalPrice) * 100
   );
 
-  // Latest price from history or current price
   const latestPrice =
     history.length > 0
       ? history[history.length - 1].price
       : product.currentPrice;
 
+  const lowestPrice = history.length > 0
+    ? Math.min(...history.map((h) => h.price))
+    : product.currentPrice;
+
+  const highestPrice = history.length > 0
+    ? Math.max(...history.map((h) => h.price))
+    : product.originalPrice;
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <Image
-        source={{ uri: product.imageUrl }}
-        style={styles.image}
-        resizeMode="cover"
-      />
-
-      {discountPercent > 0 && (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>-{discountPercent}% OFF</Text>
-        </View>
-      )}
-
-      <View style={styles.content}>
-        <Text style={styles.category}>{product.category}</Text>
-        <Text style={styles.name}>{product.name}</Text>
-
-        <View style={styles.priceRow}>
-          <Text style={styles.currentPrice}>${latestPrice.toFixed(2)}</Text>
+    <View style={styles.screen}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.imageWrapper}>
+          <Image
+            source={{ uri: product.imageUrl }}
+            style={styles.image}
+            resizeMode="cover"
+          />
+          <View style={styles.imageOverlay} />
           {discountPercent > 0 && (
-            <Text style={styles.originalPrice}>
-              ${product.originalPrice.toFixed(2)}
-            </Text>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>-{discountPercent}% OFF</Text>
+            </View>
           )}
         </View>
 
-        <Text style={styles.description}>{product.description}</Text>
+        <View style={styles.content}>
+          <Text style={styles.category}>{product.category}</Text>
+          <Text style={styles.name}>{product.name}</Text>
 
-        {/* Price Stats */}
-        <View style={styles.statsRow}>
-          <View style={styles.statBox}>
-            <Text style={styles.statLabel}>Average</Text>
-            <Text style={styles.statValue}>${averagePrice.toFixed(2)}</Text>
+          <View style={styles.priceRow}>
+            <Text style={styles.priceCurrencySymbol}>$</Text>
+            <Text style={styles.currentPrice}>{latestPrice.toFixed(2)}</Text>
+            {discountPercent > 0 && (
+              <Text style={styles.originalPrice}>
+                ${product.originalPrice.toFixed(2)}
+              </Text>
+            )}
           </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statLabel}>Lowest</Text>
-            <Text style={[styles.statValue, { color: COLORS.success }]}>
-              $
-              {history.length > 0
-                ? Math.min(...history.map((h) => h.price)).toFixed(2)
-                : product.currentPrice.toFixed(2)}
-            </Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statLabel}>Highest</Text>
-            <Text style={[styles.statValue, { color: COLORS.danger }]}>
-              $
-              {history.length > 0
-                ? Math.max(...history.map((h) => h.price)).toFixed(2)
-                : product.originalPrice.toFixed(2)}
-            </Text>
-          </View>
-        </View>
 
-        {/* Price History List */}
-        <Text style={styles.sectionTitle}>
-          Price History ({history.length} records)
-        </Text>
+          <CollapsibleSection title="Description" defaultOpen>
+            <Text style={styles.description}>{product.description}</Text>
+          </CollapsibleSection>
 
-        {history.length === 0 ? (
-          <Text style={styles.noHistory}>No price history yet</Text>
-        ) : (
-          <View style={styles.historyList}>
-            {[...history]
-              .reverse()
-              .slice(0, 5)
-              .map((record, index) => (
-                <View key={record.id ?? index} style={styles.historyRow}>
-                  <Text style={styles.historyDate}>
-                    {new Date(record.recordedAt).toLocaleDateString()}{' '}
-                    {new Date(record.recordedAt).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </Text>
-                  <Text style={styles.historyPrice}>
-                    ${record.price.toFixed(2)}
+          <CollapsibleSection title="Price Stats">
+            <View style={styles.statsRow}>
+              <View style={styles.statBox}>
+                <Text style={styles.statLabel}>Average</Text>
+                <View style={styles.statValueRow}>
+                  <Text style={styles.statCurrency}>$</Text>
+                  <Text style={styles.statValue}>{averagePrice.toFixed(2)}</Text>
+                </View>
+              </View>
+              <View style={styles.statBox}>
+                <Text style={styles.statLabel}>Lowest</Text>
+                <View style={styles.statValueRow}>
+                  <Text style={[styles.statCurrency, { color: COLORS.primary }]}>$</Text>
+                  <Text style={[styles.statValue, { color: COLORS.primary }]}>
+                    {lowestPrice.toFixed(2)}
                   </Text>
                 </View>
-              ))}
-          </View>
-        )}
+              </View>
+              <View style={styles.statBox}>
+                <Text style={styles.statLabel}>Highest</Text>
+                <View style={styles.statValueRow}>
+                  <Text style={[styles.statCurrency, { color: COLORS.secondary }]}>$</Text>
+                  <Text style={[styles.statValue, { color: COLORS.secondary }]}>
+                    {highestPrice.toFixed(2)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </CollapsibleSection>
 
-        {/* SVG Price Chart */}
-<PriceChart
-  history={history}
-  averagePrice={averagePrice}
-/>
+          <CollapsibleSection
+            title={`Price History (${history.length} records)`}
+            defaultOpen
+          >
+            {history.length === 0 ? (
+              <Text style={styles.noHistory}>No price history yet</Text>
+            ) : (
+              <>
+                <View style={styles.historyList}>
+                  {[...history]
+                    .reverse()
+                    .slice(0, 5)
+                    .map((record, index) => (
+                      <View key={record.id ?? index} style={styles.historyRow}>
+                        <Text style={styles.historyDate}>
+                          {new Date(record.recordedAt).toLocaleDateString()}{' '}
+                          {new Date(record.recordedAt).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </Text>
+                        <Text style={styles.historyPrice}>
+                          ${record.price.toFixed(2)}
+                        </Text>
+                      </View>
+                    ))}
+                </View>
+                <PriceChart history={history} averagePrice={averagePrice} />
+              </>
+            )}
+          </CollapsibleSection>
 
-        {/* Simulate Button */}
-        <TouchableOpacity
-          style={styles.simulateButton}
-          onPress={handleSimulate}
-          disabled={isSimulating}
-        >
-          <Text style={styles.simulateText}>🎲 Simulate Price Change</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.simulateButton}
+            onPress={handleSimulate}
+            disabled={isSimulating}
+          >
+            <Text style={styles.simulateText}>
+              {isSimulating ? 'Simulating...' : 'Simulate Price Change'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
 
-        {/* Wishlist Button */}
-        <TouchableOpacity
-          style={[
-            styles.wishlistButton,
-            wishlisted && styles.wishlistButtonActive,
-          ]}
-          onPress={toggleWishlist}
-        >
-          <Text style={[
-  styles.wishlistButtonText,
-  wishlisted && styles.wishlistButtonTextActive,
-]}>
-  {wishlisted ? '❤️ Remove from Wishlist' : '🤍 Add to Wishlist'}
-</Text>
-        </TouchableOpacity>
-
-        {/* Notifications Button */}
-        <TouchableOpacity
-          style={styles.notifButton}
-          onPress={() => router.push('/(modals)/notifications')}
-        >
-          <Text style={styles.notifButtonText}>🔔 View Alerts</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      <StickyBottomBar
+        actions={[
+          {
+            label: wishlisted ? 'Remove from Wishlist' : 'Add to Wishlist',
+            variant: wishlisted ? 'danger' : 'primary',
+            onPress: toggleWishlist,
+          },
+          {
+            label: 'Alerts',
+            variant: 'secondary',
+            onPress: () => router.push('/(modals)/notifications'),
+          },
+        ]}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+  screen: { flex: 1, backgroundColor: COLORS.background },
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: 24 },
+  imageWrapper: { position: 'relative' as const },
   image: { width: '100%', height: 260, backgroundColor: COLORS.border },
+  imageOverlay: {
+    position: 'absolute' as const,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+  },
   badge: {
-    position: 'absolute',
+    position: 'absolute' as const,
     top: 16,
     right: 16,
-    backgroundColor: COLORS.danger,
+    backgroundColor: COLORS.secondary,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  badgeText: { color: COLORS.surface, fontWeight: 'bold', fontSize: 13 },
-  content: { padding: 20 },
+  badgeText: { color: '#000', fontWeight: 'bold', fontSize: 13 },
+  content: { padding: 20, paddingBottom: 0 },
   category: {
     fontSize: 12,
     color: COLORS.primary,
     fontWeight: '600',
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
     letterSpacing: 0.5,
     marginBottom: 6,
   },
@@ -276,8 +295,13 @@ const styles = StyleSheet.create({
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginBottom: 16,
+    gap: 8,
+    marginBottom: 20,
+  },
+  priceCurrencySymbol: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: COLORS.accent,
   },
   currentPrice: {
     fontSize: 28,
@@ -293,52 +317,52 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textSecondary,
     lineHeight: 22,
-    marginBottom: 24,
   },
   statsRow: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 24,
   },
   statBox: {
     flex: 1,
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.glass,
     borderRadius: 10,
     padding: 12,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
   },
   statLabel: {
     fontSize: 11,
     color: COLORS.textSecondary,
-    marginBottom: 4,
+    marginBottom: 6,
     fontWeight: '500',
+  },
+  statValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  statCurrency: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: COLORS.textSecondary,
   },
   statValue: {
     fontSize: 15,
     fontWeight: 'bold',
     color: COLORS.textPrimary,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-    marginBottom: 12,
-  },
   noHistory: {
     fontSize: 14,
     color: COLORS.textSecondary,
-    marginBottom: 16,
   },
   historyList: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.glass,
     borderRadius: 12,
-    marginBottom: 20,
+    marginBottom: 16,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
   },
   historyRow: {
     flexDirection: 'row',
@@ -356,59 +380,18 @@ const styles = StyleSheet.create({
   historyPrice: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.textPrimary,
+    color: COLORS.primary,
   },
-  chartPlaceholder: {
-    backgroundColor: COLORS.border,
-    borderRadius: 12,
-    height: 160,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  chartText: { color: COLORS.textSecondary, fontSize: 14 },
   simulateButton: {
-    backgroundColor: COLORS.warning,
+    backgroundColor: COLORS.accent,
     padding: 14,
     borderRadius: 12,
     alignItems: 'center',
-    marginBottom: 12,
+    marginTop: 8,
   },
   simulateText: {
-    color: COLORS.surface,
+    color: '#000',
     fontWeight: 'bold',
     fontSize: 15,
-  },
-  wishlistButton: {
-    backgroundColor: COLORS.surface,
-    borderWidth: 2,
-    borderColor: COLORS.secondary,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  wishlistButtonActive: { backgroundColor: COLORS.secondary },
-  wishlistButtonText: {
-  color: COLORS.secondary,
-  fontWeight: 'bold',
-  fontSize: 16,
-},
-wishlistButtonTextActive: {
-  color: COLORS.surface,
-  fontWeight: 'bold',
-  fontSize: 16,
-},
-  notifButton: {
-    backgroundColor: COLORS.primary,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  notifButtonText: {
-    color: COLORS.surface,
-    fontWeight: 'bold',
-    fontSize: 16,
   },
 });

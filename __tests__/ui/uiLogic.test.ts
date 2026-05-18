@@ -1,7 +1,6 @@
 // __tests__/ui/uiLogic.test.ts
 // Tests for UI helper logic and formatting
 
-import { calculateAveragePrice, calculateDropPercent } from '../../utils/priceAlgorithm';
 import { PriceRecord } from '../../types';
 
 // ── Helper ──

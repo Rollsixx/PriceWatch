@@ -1,4 +1,3 @@
-// components/product/ProductCard.tsx
 import { memo } from 'react';
 import {
   View,
@@ -25,25 +24,24 @@ function ProductCard({ product }: Props) {
     <TouchableOpacity
       style={styles.card}
       onPress={() => router.push(`/(stack)/product/${product.id}`)}
-      activeOpacity={0.85}
+      activeOpacity={0.7}
     >
-      {/* Product Image */}
-      <Image
-        source={{ uri: product.imageUrl }}
-        style={styles.image}
-        resizeMode="cover"
-      />
+      <View style={styles.imageWrapper}>
+        <Image
+          source={{ uri: product.imageUrl }}
+          style={styles.image}
+          resizeMode="cover"
+        />
+        <View style={styles.imageOverlay} />
+      </View>
 
-      {/* Discount Badge */}
       {hasDrop && (
         <View style={styles.badge}>
           <Text style={styles.badgeText}>-{discountPercent}%</Text>
         </View>
       )}
 
-      {/* Product Info */}
       <View style={styles.info}>
-        {/* Category pill */}
         <View style={styles.categoryPill}>
           <Text style={styles.category}>{product.category}</Text>
         </View>
@@ -52,10 +50,10 @@ function ProductCard({ product }: Props) {
           {product.name}
         </Text>
 
-        {/* Price Row */}
         <View style={styles.priceRow}>
+          <Text style={styles.priceCurrency}>$</Text>
           <Text style={styles.currentPrice}>
-            ${product.currentPrice.toFixed(2)}
+            {product.currentPrice.toFixed(2)}
           </Text>
           {hasDrop && (
             <>
@@ -79,32 +77,40 @@ export default memo(ProductCard);
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.glass,
     borderRadius: 16,
     marginBottom: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
+  },
+  imageWrapper: {
+    position: 'relative',
   },
   image: {
     width: '100%',
     height: 180,
     backgroundColor: COLORS.border,
   },
+  imageOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 60,
+    backgroundColor: 'transparent',
+  },
   badge: {
     position: 'absolute',
     top: 12,
     right: 12,
-    backgroundColor: COLORS.danger,
+    backgroundColor: COLORS.secondary,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
   badgeText: {
-    color: COLORS.surface,
+    color: '#000',
     fontWeight: 'bold',
     fontSize: 12,
   },
@@ -112,7 +118,7 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   categoryPill: {
-    backgroundColor: '#EEF0FF',
+    backgroundColor: 'rgba(0,214,143,0.15)',
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -139,6 +145,11 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
+  priceCurrency: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.accent,
+  },
   currentPrice: {
     fontSize: 20,
     fontWeight: 'bold',
@@ -150,14 +161,14 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
   },
   savingPill: {
-    backgroundColor: '#E8F8F0',
+    backgroundColor: 'rgba(0,214,143,0.15)',
     borderRadius: 6,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
   savingText: {
     fontSize: 11,
-    color: COLORS.success,
+    color: COLORS.primary,
     fontWeight: '700',
   },
 });

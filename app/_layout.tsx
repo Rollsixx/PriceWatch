@@ -49,8 +49,9 @@ export default function RootLayout() {
 
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: COLORS.primary },
-          headerTintColor: COLORS.surface,
+          headerStyle: { backgroundColor: COLORS.background },
+          headerTintColor: COLORS.textPrimary,
+          headerShadowVisible: false,
           headerTitleStyle: { fontWeight: 'bold' },
           contentStyle: { backgroundColor: COLORS.background },
         }}
@@ -59,19 +60,26 @@ export default function RootLayout() {
           name="(tabs)"
           options={{ headerShown: false }}
         />
-        <Stack.Screen
-          name="(stack)/product/[id]"
-          options={{
-            title: 'Product Details',
-            headerBackTitle: 'Back',
-          }}
-        />
+          <Stack.Screen
+            name="(stack)/product/[id]"
+            options={{
+              title: 'Product Details',
+              headerBackTitle: 'Back',
+            }}
+          />
+          <Stack.Screen
+            name="(stack)/about"
+            options={{
+              title: 'About',
+              headerBackTitle: 'Back',
+            }}
+          />
         <Stack.Screen
           name="(modals)/notifications"
           options={{
             presentation: 'modal',
-            title: '🔔 Notifications',
-            headerStyle: { backgroundColor: COLORS.surface },
+            title: 'Notifications',
+            headerStyle: { backgroundColor: COLORS.background },
             headerTintColor: COLORS.textPrimary,
           }}
         />

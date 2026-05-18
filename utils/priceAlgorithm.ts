@@ -1,85 +1,102 @@
 // utils/priceAlgorithm.ts
-// Core price drop detection algorithm
+// Core price drop detection algorithm using Z-score anomaly detection
 // This file is independently testable — no React Native dependencies
 
 import { PriceRecord } from '../types';
-import { PRICE_DROP_THRESHOLD_PERCENT } from '../constants';
+import { Z_SCORE_THRESHOLD, MIN_HISTORY_FOR_ZSCORE } from '../constants';
 
 // ─────────────────────────────────────────────
-// 1. CALCULATE AVERAGE PRICE
+// 1. CALCULATE MEAN (AVERAGE) PRICE
 // ─────────────────────────────────────────────
-// Takes an array of price records and returns the mean price.
-// Returns 0 if no records exist (edge case protection).
-//
-// Why average and not just previous price?
-// → Average is more stable. A single spike won't cause false alerts.
-export function calculateAveragePrice(history: PriceRecord[]): number {
+export function calculateMean(history: PriceRecord[]): number {
   if (history.length === 0) return 0;
-
   const total = history.reduce((sum, record) => sum + record.price, 0);
   return Math.round((total / history.length) * 100) / 100;
 }
 
 // ─────────────────────────────────────────────
-// 2. CALCULATE DROP PERCENTAGE
+// 2. CALCULATE STANDARD DEVIATION
 // ─────────────────────────────────────────────
-// How much has the price dropped compared to the average?
-// Returns a positive number for drops, negative for increases.
-//
-// Formula: ((average - current) / average) × 100
-// Example: avg=$100, current=$80 → drop = 20%
-export function calculateDropPercent(
-  averagePrice: number,
-  currentPrice: number
-): number {
-  if (averagePrice <= 0) return 0;
-
-  const drop = ((averagePrice - currentPrice) / averagePrice) * 100;
-  return Math.round(drop * 100) / 100; // Round to 2 decimal places
+// Population standard deviation (not sample) since we have the full set.
+export function calculateStdDev(history: PriceRecord[]): number {
+  if (history.length < 2) return 0;
+  const mean = calculateMean(history);
+  const squaredDiffs = history.reduce(
+    (sum, record) => sum + (record.price - mean) ** 2,
+    0
+  );
+  return Math.round(Math.sqrt(squaredDiffs / history.length) * 100) / 100;
 }
 
 // ─────────────────────────────────────────────
-// 3. DETECT SIGNIFICANT PRICE DROP
+// 3. CALCULATE Z-SCORE
 // ─────────────────────────────────────────────
-// Main detection function — returns true if drop exceeds threshold.
+// Z = (currentPrice - mean) / stdDev
+// A negative Z-score means price is below the mean.
+// Z < -1.5 → significant drop (anomaly)
+export function calculateZScore(
+  currentPrice: number,
+  mean: number,
+  stdDev: number
+): number {
+  if (stdDev <= 0) return 0;
+  return Math.round(((currentPrice - mean) / stdDev) * 100) / 100;
+}
+
+// ─────────────────────────────────────────────
+// 4. DETECT ANOMALOUS PRICE DROP (Z-SCORE METHOD)
+// ─────────────────────────────────────────────
+// Flags a drop when the current price is more than Z_SCORE_THRESHOLD
+// standard deviations below the rolling mean.
 //
-// Requirements to trigger:
-//   a) Must have at least 2 price records (need history to compare)
-//   b) Drop percentage must meet or exceed threshold (default: 10%)
-//   c) Current price must actually be below average (not just equal)
+// Requirements:
+//   a) Must have at least MIN_HISTORY_FOR_ZSCORE records
+//   b) Current price must be below the mean
+//   c) |Z-score| must exceed Z_SCORE_THRESHOLD (default: 1.5)
 export function detectPriceDrop(
   history: PriceRecord[],
   currentPrice: number,
-  thresholdPercent: number = PRICE_DROP_THRESHOLD_PERCENT
+  zThreshold: number = Z_SCORE_THRESHOLD
 ): boolean {
-  // Edge case: not enough history to make a comparison
-  if (history.length < 2) return false;
-
-  // Edge case: invalid price
+  if (history.length < MIN_HISTORY_FOR_ZSCORE) return false;
   if (currentPrice <= 0) return false;
 
-  const average = calculateAveragePrice(history);
+  const mean = calculateMean(history);
+  const stdDev = calculateStdDev(history);
 
-  // Edge case: no valid average
-  if (average <= 0) return false;
+  if (stdDev <= 0) return false;
 
-  const dropPercent = calculateDropPercent(average, currentPrice);
+  const zScore = calculateZScore(currentPrice, mean, stdDev);
 
-  // Only trigger if price is BELOW average by threshold amount
-  return dropPercent >= thresholdPercent;
+  // Negative Z-score = below mean; must exceed threshold
+  return zScore < -zThreshold;
 }
 
 // ─────────────────────────────────────────────
-// 4. BUILD ALERT OBJECT
+// 5. CALCULATE DROP PERCENTAGE (for display)
 // ─────────────────────────────────────────────
-// Creates a structured alert when a drop is detected.
+// How much has the price dropped compared to the mean?
+// Positive number = drop, negative = increase.
+export function calculateDropPercent(
+  meanPrice: number,
+  currentPrice: number
+): number {
+  if (meanPrice <= 0) return 0;
+  const drop = ((meanPrice - currentPrice) / meanPrice) * 100;
+  return Math.round(drop * 100) / 100;
+}
+
+// ─────────────────────────────────────────────
+// 6. BUILD ALERT OBJECT
+// ─────────────────────────────────────────────
+// Creates a structured alert when Z-score anomaly is detected.
 // Returns null if no significant drop found.
 export function buildPriceDropAlert(
   productId: string,
   productName: string,
   history: PriceRecord[],
   currentPrice: number,
-  thresholdPercent: number = PRICE_DROP_THRESHOLD_PERCENT
+  zThreshold: number = Z_SCORE_THRESHOLD
 ): {
   productId: string;
   productName: string;
@@ -87,45 +104,77 @@ export function buildPriceDropAlert(
   newPrice: number;
   dropPercent: number;
   detectedAt: number;
+  zScore: number;
 } | null {
-  const isDropDetected = detectPriceDrop(history, currentPrice, thresholdPercent);
+  if (history.length < MIN_HISTORY_FOR_ZSCORE) return null;
+  if (currentPrice <= 0) return null;
 
-  if (!isDropDetected) return null;
+  const mean = calculateMean(history);
+  const stdDev = calculateStdDev(history);
+  const zScore = calculateZScore(currentPrice, mean, stdDev);
 
-  const average = calculateAveragePrice(history);
-  const dropPercent = calculateDropPercent(average, currentPrice);
+  if (zScore >= -zThreshold) return null;
+
+  const dropPercent = calculateDropPercent(mean, currentPrice);
 
   return {
     productId,
     productName,
-    oldPrice: average,      // We compare against average, not previous price
+    oldPrice: mean,
     newPrice: currentPrice,
     dropPercent,
     detectedAt: Date.now(),
+    zScore,
   };
 }
 
 // ─────────────────────────────────────────────
-// 5. ANALYZE PRICE TREND
+// 7. ANALYZE PRICE TREND
 // ─────────────────────────────────────────────
-// Helper to understand if prices are going up, down, or stable.
-// Used for display purposes in the chart and product details.
 export function analyzePriceTrend(
   history: PriceRecord[]
 ): 'rising' | 'falling' | 'stable' {
   if (history.length < 2) return 'stable';
 
-  // Compare first half average to second half average
   const midpoint = Math.floor(history.length / 2);
   const firstHalf = history.slice(0, midpoint);
   const secondHalf = history.slice(midpoint);
 
-  const firstAvg = calculateAveragePrice(firstHalf);
-  const secondAvg = calculateAveragePrice(secondHalf);
+  const firstMean = calculateMean(firstHalf);
+  const secondMean = calculateMean(secondHalf);
 
-  const changePercent = calculateDropPercent(firstAvg, secondAvg);
+  if (firstMean <= 0) return 'stable';
+  const changePercent = ((firstMean - secondMean) / firstMean) * 100;
 
-  if (changePercent >= 3) return 'falling';   // Dropped 3%+ → falling
-  if (changePercent <= -3) return 'rising';   // Rose 3%+ → rising
+  if (changePercent >= 3) return 'falling';
+  if (changePercent <= -3) return 'rising';
   return 'stable';
+}
+
+// ─────────────────────────────────────────────
+// 8. TIME-WINDOW FILTERING (circular buffer query)
+// ─────────────────────────────────────────────
+// Given price history, return only records within the last N hours.
+export function filterHistoryLastNHours(
+  history: PriceRecord[],
+  hours: number
+): PriceRecord[] {
+  const cutoff = Date.now() - hours * 60 * 60 * 1000;
+  return history.filter((record) => record.recordedAt >= cutoff);
+}
+
+// ─────────────────────────────────────────────
+// 9. CHECK IF DROPPED IN LAST N HOURS
+// ─────────────────────────────────────────────
+// Returns true if the latest price in the window is a Z-score anomaly.
+export function hasDroppedInLastNHours(
+  history: PriceRecord[],
+  hours: number,
+  zThreshold: number = Z_SCORE_THRESHOLD
+): boolean {
+  const windowHistory = filterHistoryLastNHours(history, hours);
+  if (windowHistory.length < MIN_HISTORY_FOR_ZSCORE) return false;
+
+  const latestPrice = windowHistory[windowHistory.length - 1].price;
+  return detectPriceDrop(windowHistory, latestPrice, zThreshold);
 }

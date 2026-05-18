@@ -1,9 +1,9 @@
-// app/(tabs)/profile.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
   TextInput,
+  Image,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
@@ -12,23 +12,49 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
+import { router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useWishlistStore } from '../../store/useWishlistStore';
 import { useNotificationStore } from '../../store/useNotificationStore';
-import { loginWithEmail, registerWithEmail, logout } from '../../services/authService';
+import {
+  loginWithEmail,
+  registerWithEmail,
+  signInWithGoogle,
+  logout,
+} from '../../services/authService';
 import StateDebugPanel from '../../components/ui/StateDebugPanel';
-import { COLORS } from '../../constants';
+import { COLORS, GOOGLE_WEB_CLIENT_ID } from '../../constants';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function ProfileScreen() {
   const { user, isAuthenticated } = useAuthStore();
   const wishlistCount = useWishlistStore((s) => s.items.length);
   const alertCount = useNotificationStore((s) => s.alerts.length);
+  const totalSaved = useWishlistStore((s) =>
+    s.items.reduce((sum, item) => sum + item.currentPrice, 0)
+  );
 
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const [, googleResponse, googlePromptAsync] = Google.useIdTokenAuthRequest({
+    clientId: GOOGLE_WEB_CLIENT_ID,
+  });
+
+  useEffect(() => {
+    if (googleResponse?.type === 'success') {
+      const { id_token } = googleResponse.params;
+      signInWithGoogle(id_token).catch((err: any) => {
+        Alert.alert('Error', err.message);
+      });
+    }
+  }, [googleResponse]);
 
   async function handleSubmit() {
     if (!email || !password) {
@@ -70,55 +96,69 @@ export default function ProfileScreen() {
     ]);
   }
 
-  // ── LOGGED IN VIEW ──
   if (isAuthenticated && user) {
     return (
       <ScrollView contentContainerStyle={styles.container}>
-        {/* Avatar */}
-        <View style={styles.avatarCircle}>
-          <Text style={styles.avatarText}>
-            {user.displayName?.[0]?.toUpperCase() ?? '?'}
-          </Text>
-        </View>
-
-        <Text style={styles.name}>{user.displayName}</Text>
-        <Text style={styles.email}>{user.email}</Text>
-
-        {/* Stats Row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>{wishlistCount}</Text>
-            <Text style={styles.statLabel}>Wishlisted</Text>
+        <View style={styles.headerSection}>
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarText}>
+              {user.displayName?.[0]?.toUpperCase() ?? '?'}
+            </Text>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>{alertCount}</Text>
-            <Text style={styles.statLabel}>Alerts</Text>
+          <Text style={styles.name}>{user.displayName}</Text>
+          <Text style={styles.email}>{user.email}</Text>
+        </View>
+
+        <View style={styles.dashboardCard}>
+          <Text style={styles.dashboardTitle}>Dashboard</Text>
+          <View style={styles.metricsRow}>
+            <View style={styles.metricBox}>
+              <Text style={styles.metricNumber}>{wishlistCount}</Text>
+              <Text style={styles.metricLabel}>Wishlisted</Text>
+            </View>
+            <View style={styles.metricDivider} />
+            <View style={styles.metricBox}>
+              <Text style={styles.metricNumber}>{alertCount}</Text>
+              <Text style={styles.metricLabel}>Alerts</Text>
+            </View>
+            <View style={styles.metricDivider} />
+            <View style={styles.metricBox}>
+              <Text style={styles.metricNumber}>${totalSaved.toFixed(0)}</Text>
+              <Text style={styles.metricLabel}>Total Value</Text>
+            </View>
           </View>
         </View>
 
-        {/* App Info */}
-        <View style={styles.infoBox}>
-          <InfoRow label="Storage" value="SQLite + Firebase" />
-          <InfoRow label="State" value="Zustand (4 stores)" />
-          <InfoRow label="Navigation" value="Expo Router v6" />
-          <InfoRow label="SDK" value="Expo SDK 54" />
+        <Text style={styles.quickActionsTitle}>Quick Actions</Text>
+        <View style={styles.actionsGrid}>
+          <QuickAction
+            icon="💬"
+            label="About"
+            onPress={() => router.push('/(stack)/about')}
+          />
+          <QuickAction
+            icon="🔔"
+            label="Notifications"
+            onPress={() => router.push('/(modals)/notifications')}
+          />
+          <QuickAction
+            icon="📊"
+            label="All Alerts"
+            onPress={() => router.push('/(modals)/notifications')}
+          />
+          <QuickAction
+            icon="🚪"
+            label="Sign Out"
+            danger
+            onPress={handleLogout}
+          />
         </View>
 
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={handleLogout}
-        >
-          <Text style={styles.logoutText}>Sign Out</Text>
-        </TouchableOpacity>
-
-        {/* State Debug Panel */}
         <StateDebugPanel />
       </ScrollView>
     );
   }
 
-  // ── LOGIN / REGISTER VIEW ──
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -126,12 +166,16 @@ export default function ProfileScreen() {
     >
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.logoBox}>
-          <Text style={styles.logoEmoji}>🛍️</Text>
-          <Text style={styles.logoTitle}>Wishlist App</Text>
+          <Image
+            source={require('../../assets/Logo profile.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+          <Text style={styles.logoTitle}>PriceWatch</Text>
         </View>
 
         <Text style={styles.title}>
-          {isLogin ? '👋 Welcome Back' : '🚀 Create Account'}
+          {isLogin ? 'Welcome Back' : 'Create Account'}
         </Text>
         <Text style={styles.subtitle}>
           {isLogin
@@ -143,30 +187,30 @@ export default function ProfileScreen() {
           <TextInput
             style={styles.input}
             placeholder="Full Name"
+            placeholderTextColor={COLORS.textSecondary}
             value={displayName}
             onChangeText={setDisplayName}
             autoCapitalize="words"
-            placeholderTextColor={COLORS.textSecondary}
           />
         )}
 
         <TextInput
           style={styles.input}
           placeholder="Email"
+          placeholderTextColor={COLORS.textSecondary}
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
-          placeholderTextColor={COLORS.textSecondary}
         />
 
         <TextInput
           style={styles.input}
           placeholder="Password"
+          placeholderTextColor={COLORS.textSecondary}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
-          placeholderTextColor={COLORS.textSecondary}
         />
 
         <TouchableOpacity
@@ -175,12 +219,25 @@ export default function ProfileScreen() {
           disabled={isLoading}
         >
           {isLoading ? (
-            <ActivityIndicator color={COLORS.surface} />
+            <ActivityIndicator color="#000" />
           ) : (
             <Text style={styles.submitText}>
               {isLogin ? 'Sign In' : 'Create Account'}
             </Text>
           )}
+        </TouchableOpacity>
+
+        <View style={styles.dividerRow}>
+          <View style={styles.divider} />
+          <Text style={styles.dividerText}>OR</Text>
+          <View style={styles.divider} />
+        </View>
+
+        <TouchableOpacity
+          style={styles.googleButton}
+          onPress={() => googlePromptAsync()}
+        >
+          <Text style={styles.googleButtonText}>G  Sign in with Google</Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => setIsLogin(!isLogin)}>
@@ -195,12 +252,30 @@ export default function ProfileScreen() {
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function QuickAction({
+  icon,
+  label,
+  onPress,
+  danger,
+}: {
+  icon: string;
+  label: string;
+  onPress: () => void;
+  danger?: boolean;
+}) {
   return (
-    <View style={styles.infoRow}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
-    </View>
+    <TouchableOpacity
+      style={[styles.actionCard, danger && styles.actionCardDanger]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <Text style={styles.actionIcon}>{icon}</Text>
+      <Text
+        style={[styles.actionLabel, danger && styles.actionLabelDanger]}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
   );
 }
 
@@ -211,6 +286,11 @@ const styles = StyleSheet.create({
     padding: 24,
     backgroundColor: COLORS.background,
   },
+  headerSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+    marginTop: 8,
+  },
   avatarCircle: {
     width: 88,
     height: 88,
@@ -219,7 +299,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-    marginTop: 8,
     shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -229,7 +308,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: COLORS.surface,
+    color: '#000',
   },
   name: {
     fontSize: 22,
@@ -240,89 +319,98 @@ const styles = StyleSheet.create({
   email: {
     fontSize: 14,
     color: COLORS.textSecondary,
-    marginBottom: 24,
   },
-  statsRow: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.surface,
+  dashboardCard: {
+    width: '100%',
+    backgroundColor: COLORS.glass,
     borderRadius: 16,
     padding: 20,
-    width: '100%',
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
   },
-  statBox: {
+  dashboardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 16,
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  metricBox: {
     flex: 1,
     alignItems: 'center',
   },
-  statDivider: {
+  metricDivider: {
     width: 1,
+    height: 36,
     backgroundColor: COLORS.border,
-    marginHorizontal: 16,
+    marginHorizontal: 4,
   },
-  statNumber: {
-    fontSize: 28,
+  metricNumber: {
+    fontSize: 24,
     fontWeight: 'bold',
     color: COLORS.primary,
   },
-  statLabel: {
-    fontSize: 12,
+  metricLabel: {
+    fontSize: 11,
     color: COLORS.textSecondary,
     marginTop: 4,
   },
-  infoBox: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 16,
-    padding: 16,
+  quickActionsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 12,
+    width: '100%',
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
     width: '100%',
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
   },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+  actionCard: {
+    width: '48%',
+    backgroundColor: COLORS.glass,
+    borderRadius: 14,
+    padding: 18,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
+    flexGrow: 1,
   },
-  infoLabel: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
+  actionCardDanger: {
+    backgroundColor: 'rgba(255,107,107,0.1)',
+    borderColor: COLORS.secondary,
   },
-  infoValue: {
+  actionIcon: {
+    fontSize: 28,
+    marginBottom: 8,
+  },
+  actionLabel: {
     fontSize: 13,
     fontWeight: '600',
     color: COLORS.textPrimary,
   },
-  logoutButton: {
-    backgroundColor: COLORS.danger,
-    paddingHorizontal: 40,
-    paddingVertical: 14,
-    borderRadius: 12,
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  logoutText: {
-    color: COLORS.surface,
-    fontWeight: 'bold',
-    fontSize: 16,
+  actionLabelDanger: {
+    color: COLORS.secondary,
   },
   logoBox: {
     alignItems: 'center',
     marginBottom: 32,
     marginTop: 16,
   },
-  logoEmoji: {
-    fontSize: 48,
+  logoImage: {
+    width: 80,
+    height: 80,
     marginBottom: 8,
   },
   logoTitle: {
@@ -345,7 +433,7 @@ const styles = StyleSheet.create({
   },
   input: {
     width: '100%',
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.surfaceLight,
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: 12,
@@ -364,7 +452,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   submitText: {
-    color: COLORS.surface,
+    color: '#000',
     fontWeight: 'bold',
     fontSize: 16,
   },
@@ -372,5 +460,37 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontSize: 14,
     fontWeight: '500',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+    width: '100%',
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.border,
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  googleButton: {
+    width: '100%',
+    backgroundColor: COLORS.surfaceLight,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  googleButtonText: {
+    color: COLORS.textPrimary,
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });

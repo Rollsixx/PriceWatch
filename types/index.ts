@@ -34,6 +34,7 @@ export interface PriceDropAlert {
   oldPrice: number;
   newPrice: number;
   dropPercent: number;
+  zScore: number;
   detectedAt: number;
   read: boolean;
 }

@@ -1,17 +1,17 @@
 {
   "expo": {
-    "name": "Wishlist App",
-    "slug": "wishlist-app",
-    "scheme": "wishlistapp",
+    "name": "PriceWatch",
+    "slug": "pricewatch-app",
+    "scheme": "pricewatch",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/icon.png",
+      "image": "./assets/Logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#6C63FF"
+      "backgroundColor": "#0D0D1A"
     },
     "plugins": [
       "expo-router",
@@ -19,21 +19,22 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
-          "color": "#6C63FF"
+          "icon": "./assets/Logo.png",
+          "color": "#00D68F"
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.wishlistapp.dev"
+      "bundleIdentifier": "com.pricewatch.dev"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#6C63FF"
+        "foregroundImage": "./assets/Logo.png",
+        "backgroundColor": "#0D0D1A"
       },
-      "package": "com.wishlistapp.dev"
+      "package": "com.pricewatch.dev"
     },
     "web": {
       "bundler": "metro",
@@ -48,6 +49,6 @@
         "projectId": "626c79e3-3ce8-407c-b886-943a850c8b82"
       }
     },
-    "owner": "polj"
+    "owner": "rollsixx"
   }
 }

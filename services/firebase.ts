@@ -5,12 +5,12 @@ import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyC-e881BTpn_4nSQzu57wAgprUp3EdQd0g",
-  authDomain: "wishlist-app-67fad.firebaseapp.com",
-  projectId: "wishlist-app-67fad",
-  storageBucket: "wishlist-app-67fad.firebasestorage.app",
-  messagingSenderId: "1048164707556",
-  appId: "1:1048164707556:web:311f93531bf8989bf4d0f1"
+  apiKey: "AIzaSyAWx3Qe3FCXUSNCmkXDvOuR0W1PCEZ_F9s",
+  authDomain: "pricewatch-app-c7a3f.firebaseapp.com",
+  projectId: "pricewatch-app-c7a3f",
+  storageBucket: "pricewatch-app-c7a3f.firebasestorage.app",
+  messagingSenderId: "246953806241",
+  appId: "1:246953806241:web:be6ac959f6ebd4d05063e0"
 };
 
 // Only initialize if no app exists yet

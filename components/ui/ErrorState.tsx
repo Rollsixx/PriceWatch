@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   buttonText: {
-    color: COLORS.surface,
+    color: '#000',
     fontWeight: 'bold',
     fontSize: 15,
   },

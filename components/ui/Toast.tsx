@@ -1,6 +1,3 @@
-// components/ui/Toast.tsx
-// Animated toast that slides in from the top when a price drop is detected
-
 import { useEffect, useRef } from 'react';
 import {
   Animated,
@@ -20,7 +17,7 @@ interface Props {
 }
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const TOAST_DURATION = 4000; // Auto dismiss after 4 seconds
+const TOAST_DURATION = 4000;
 
 export default function Toast({
   message,
@@ -32,7 +29,6 @@ export default function Toast({
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Slide in
     Animated.parallel([
       Animated.spring(translateY, {
         toValue: 0,
@@ -47,7 +43,6 @@ export default function Toast({
       }),
     ]).start();
 
-    // Auto dismiss after duration
     const timer = setTimeout(() => {
       dismissToast();
     }, TOAST_DURATION);
@@ -87,16 +82,11 @@ export default function Toast({
         onPress={handlePress}
         activeOpacity={0.9}
       >
-        {/* Left accent bar */}
         <TouchableOpacity style={styles.dismissBtn} onPress={dismissToast}>
           <Text style={styles.dismissText}>✕</Text>
         </TouchableOpacity>
 
-        <Text style={styles.emoji}>🚨</Text>
-
-        <Text style={styles.title} numberOfLines={1}>
-          Price Drop: {productName}
-        </Text>
+        <Text style={styles.title}>Price Drop: {productName}</Text>
         <Text style={styles.message}>
           ↓ {dropPercent.toFixed(1)}% below average — {message}
         </Text>
@@ -114,10 +104,12 @@ const styles = StyleSheet.create({
     right: 16,
     zIndex: 9999,
     borderRadius: 16,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.surfaceLight,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 10,
   },
@@ -132,29 +124,25 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   dismissText: {
-    color: 'rgba(255,255,255,0.7)',
+    color: COLORS.textSecondary,
     fontSize: 14,
     fontWeight: 'bold',
-  },
-  emoji: {
-    fontSize: 20,
-    marginBottom: 4,
   },
   title: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: COLORS.surface,
+    color: COLORS.textPrimary,
     marginBottom: 2,
     paddingRight: 24,
   },
   message: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.85)',
+    color: COLORS.primary,
     marginBottom: 6,
   },
   tapHint: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.6)',
+    color: COLORS.textSecondary,
     fontWeight: '500',
   },
 });

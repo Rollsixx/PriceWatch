@@ -104,9 +104,9 @@ function Row({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   toggleButton: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.glass,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: COLORS.glassBorder,
     borderRadius: 10,
     padding: 12,
     alignItems: 'center',
@@ -118,12 +118,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   panel: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.glass,
     borderRadius: 12,
     padding: 16,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: COLORS.glassBorder,
     maxHeight: 400,
   },
   closeButton: {
