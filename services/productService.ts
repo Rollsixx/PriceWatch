@@ -6,61 +6,18 @@ import {
   getDocs,
   getDoc,
   doc,
-  query,
-  orderBy,
-  limit,
-  startAfter,
-  DocumentSnapshot,
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Product } from '../types';
-import { COLLECTIONS, PRODUCTS_PER_PAGE } from '../constants';
+import { COLLECTIONS } from '../constants';
 
-// --- FETCH FIRST PAGE OF PRODUCTS ---
-export async function fetchProducts(): Promise<{
-  products: Product[];
-  lastDoc: DocumentSnapshot | null;
-}> {
-  const q = query(
-    collection(db, COLLECTIONS.PRODUCTS),
-    orderBy('createdAt', 'desc'),
-    limit(PRODUCTS_PER_PAGE)
-  );
-
-  const snapshot = await getDocs(q);
-  const products = snapshot.docs.map((doc) => ({
+// --- FETCH ALL PRODUCTS (no ordering to avoid Firestore index issues) ---
+export async function fetchProducts(): Promise<Product[]> {
+  const snapshot = await getDocs(collection(db, COLLECTIONS.PRODUCTS));
+  return snapshot.docs.map((doc) => ({
     id: doc.id,
     ...doc.data(),
   })) as Product[];
-
-  const lastDoc = snapshot.docs[snapshot.docs.length - 1] ?? null;
-
-  return { products, lastDoc };
-}
-
-// --- FETCH NEXT PAGE (PAGINATION) ---
-export async function fetchMoreProducts(
-  lastDoc: DocumentSnapshot
-): Promise<{
-  products: Product[];
-  lastDoc: DocumentSnapshot | null;
-}> {
-  const q = query(
-    collection(db, COLLECTIONS.PRODUCTS),
-    orderBy('createdAt', 'desc'),
-    startAfter(lastDoc),
-    limit(PRODUCTS_PER_PAGE)
-  );
-
-  const snapshot = await getDocs(q);
-  const products = snapshot.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  })) as Product[];
-
-  const newLastDoc = snapshot.docs[snapshot.docs.length - 1] ?? null;
-
-  return { products, lastDoc: newLastDoc };
 }
 
 // --- FETCH SINGLE PRODUCT BY ID ---

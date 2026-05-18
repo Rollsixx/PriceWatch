@@ -1,5 +1,5 @@
 // app/_layout.tsx
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -7,7 +7,9 @@ import { subscribeToAuthChanges } from '../services/authService';
 import { useAuthStore } from '../store/useAuthStore';
 import { useWishlistStore } from '../store/useWishlistStore';
 import { initDatabase } from '../database/db';
+import { seedProducts } from '../services/seedService';
 import ToastManager from '../components/ui/ToastManager';
+import SplashScreen from '../components/ui/SplashScreen';
 import { COLORS } from '../constants';
 import { User as FirebaseUser } from 'firebase/auth';
 import { User } from '../types';
@@ -15,15 +17,17 @@ import { User } from '../types';
 export default function RootLayout() {
   const { setUser } = useAuthStore();
   const { loadWishlist } = useWishlistStore();
+  const [isSplashDone, setIsSplashDone] = useState(false);
+  const [isSeeded, setIsSeeded] = useState(false);
 
   useEffect(() => {
-    // Initialize SQLite tables
     initDatabase();
-
-    // Load wishlist from SQLite
     loadWishlist();
 
-    // Listen for Firebase auth state
+    seedProducts()
+      .catch(() => {})
+      .finally(() => setIsSeeded(true));
+
     const unsubscribe = subscribeToAuthChanges(
       (firebaseUser: FirebaseUser | null) => {
         if (firebaseUser) {
@@ -42,6 +46,10 @@ export default function RootLayout() {
 
     return unsubscribe;
   }, []);
+
+  if (!isSplashDone || !isSeeded) {
+    return <SplashScreen onFinish={() => setIsSplashDone(true)} />;
+  }
 
   return (
     <View style={styles.root}>

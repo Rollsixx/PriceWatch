@@ -25,8 +25,6 @@ export const COLLECTIONS = {
   USERS: 'users',
 };
 
-export const PRODUCTS_PER_PAGE = 10;
-
 // Get this from Firebase Console → Authentication → Sign-in method → Google
 // Copy the "Web client ID" value
 export const GOOGLE_WEB_CLIENT_ID =

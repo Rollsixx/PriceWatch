@@ -54,8 +54,6 @@ export default function StateDebugPanel() {
           <Row label="products.length" value={String(products.products.length)} />
           <Row label="isLoading" value={String(products.isLoading)} />
           <Row label="error" value={products.error ?? 'null'} />
-          <Row label="hasMore" value={String(products.pagination.hasMore)} />
-          <Row label="isLoadingMore" value={String(products.pagination.isLoadingMore)} />
           <Row
             label="selectedProduct"
             value={products.selectedProduct?.name ?? 'null'}

@@ -1,0 +1,17 @@
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyAWx3Qe3FCXUSNCmkXDvOuR0W1PCEZ_F9s",
+  authDomain: "pricewatch-app-c7a3f.firebaseapp.com",
+  projectId: "pricewatch-app-c7a3f",
+  storageBucket: "pricewatch-app-c7a3f.firebasestorage.app",
+  messagingSenderId: "246953806241",
+  appId: "1:246953806241:web:be6ac959f6ebd4d05063e0"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);

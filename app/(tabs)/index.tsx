@@ -1,10 +1,9 @@
-import { useEffect, useCallback, useState, useMemo, memo } from 'react';
+import { useEffect, useCallback, useState, useMemo } from 'react';
 import {
   View,
   FlatList,
   Text,
   StyleSheet,
-  ActivityIndicator,
 } from 'react-native';
 import { useProducts } from '../../hooks/useProducts';
 import SearchBar from '../../components/ui/SearchBar';
@@ -12,7 +11,6 @@ import CategoryFilter from '../../components/ui/CategoryFilter';
 import CompactProductCard from '../../components/product/CompactProductCard';
 import ProductGridCard from '../../components/product/ProductGridCard';
 import { ProductCardSkeleton } from '../../components/ui/SkeletonShimmer';
-import LoadingState from '../../components/ui/LoadingState';
 import ErrorState from '../../components/ui/ErrorState';
 import EmptyState from '../../components/ui/EmptyState';
 import { Product } from '../../types';
@@ -21,7 +19,7 @@ import { COLORS } from '../../constants';
 const keyExtractor = (item: Product) => item.id;
 
 export default function HomeScreen() {
-  const { products, isLoading, error, pagination, loadProducts, loadMore } = useProducts();
+  const { products, isLoading, error, loadProducts } = useProducts();
 
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
@@ -54,10 +52,6 @@ export default function HomeScreen() {
   const handleRefresh = useCallback(() => {
     loadProducts();
   }, [loadProducts]);
-
-  const handleLoadMore = useCallback(() => {
-    loadMore();
-  }, [loadMore]);
 
   if (isLoading && products.length === 0) {
     return (
@@ -137,12 +131,6 @@ export default function HomeScreen() {
               }
             />
           </View>
-        }
-
-        ListFooterComponent={
-          pagination.isLoadingMore ? (
-            <ActivityIndicator color={COLORS.primary} style={{ marginVertical: 16 }} />
-          ) : null
         }
 
         onRefresh={handleRefresh}
